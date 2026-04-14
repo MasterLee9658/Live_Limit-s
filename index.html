@@ -1,0 +1,360 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { RefreshCw, Search, Phone, Hash, AlertCircle, User, CreditCard, Activity, CheckCircle2, ShieldAlert, WifiOff, Sparkles, Lock, LogOut, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQuV21M4OXkPPkTO3dGjp_0dxxnWJObLs4DbhIWt2q-Wi9mI593a6iZ8CJNtoaInLMmx5ZvKV4DWhIL/pub?gid=0&single=true&output=csv";
+const ACCESS_PASSWORD = "ninja@123";
+
+/**
+ * Ninjacart Official Logo Component
+ */
+const NinjacartLogo = ({ className }) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className={`${className} flex items-center gap-3`}
+    >
+      <img 
+        src="image_7fa731.png" 
+        alt="Ninjacart Symbol" 
+        className="h-full w-auto object-contain brightness-110"
+        loading="eager"
+      />
+      <img 
+        src="ninjacart.png" 
+        alt="Ninjacart" 
+        className="h-[60%] w-auto object-contain hidden md:block invert brightness-200"
+        loading="eager"
+      />
+    </motion.div>
+  );
+};
+
+const App = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState(false);
+  
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [phoneSearch, setPhoneSearch] = useState('');
+  const [idSearch, setIdSearch] = useState('');
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (passwordInput === ACCESS_PASSWORD) {
+      setIsAuthenticated(true);
+      setLoginError(false);
+      fetchData();
+    } else {
+      setLoginError(true);
+      setTimeout(() => setLoginError(false), 2000);
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setPasswordInput('');
+    setData([]);
+    setPhoneSearch('');
+    setIdSearch('');
+  };
+
+  const fetchData = async (retries = 5, delay = 1000) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(CSV_URL);
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      const csvText = await response.text();
+      const parsed = parseCSV(csvText);
+      setData(parsed);
+    } catch (err) {
+      if (retries > 0) {
+        setTimeout(() => fetchData(retries - 1, delay * 2), delay);
+      } else {
+        setError("Unable to connect to the database. Please check your internet.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const parseCSV = (text) => {
+    if (!text) return [];
+    const lines = text.split(/\r?\n/);
+    const validLines = lines.filter(line => line.trim() !== '');
+    
+    return validLines.slice(1).map(line => {
+      const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/"/g, ''));
+      if (cols.length < 3) return null; 
+
+      return {
+        auId: cols[1] || 'N/A',             
+        name: cols[2] || 'Unknown',         
+        phone: cols[3] || '',            
+        bnplLimit: parseFloat(cols[4]) || 0, 
+        fungibleLimit: parseFloat(cols[5]) || 0, 
+        dpd: parseInt(cols[6]) || 0,
+        activeDpdLoans: parseInt(cols[7]) || 0 
+      };
+    }).filter(Boolean);
+  };
+
+  const isSearching = phoneSearch.trim() !== '' || idSearch.trim() !== '';
+
+  const filteredData = useMemo(() => {
+    if (!isSearching) return [];
+    const pSearch = phoneSearch.trim();
+    const iSearch = idSearch.trim().toLowerCase();
+
+    return data.filter(item => {
+      const matchesPhone = pSearch === '' || item.phone.toString().includes(pSearch);
+      const matchesId = iSearch === '' || item.auId.toString().toLowerCase().includes(iSearch);
+      return matchesPhone && matchesId;
+    });
+  }, [data, phoneSearch, idSearch, isSearching]);
+
+  return (
+    <div className="min-h-screen bg-[#020617] text-slate-100 font-sans p-4 md:p-6 relative overflow-hidden flex flex-col">
+      {/* Immersive Space & Nebula Background */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-30 scale-105 animate-[pulse_15s_ease-in-out_infinite]"
+          style={{ 
+            backgroundImage: "url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&q=80&w=2000')",
+            mixBlendMode: 'screen'
+          }}
+        />
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-purple-600/10 blur-[140px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-emerald-600/10 blur-[160px] rounded-full" />
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20" />
+      </div>
+
+      <AnimatePresence mode="wait">
+        {!isAuthenticated ? (
+          <motion.div 
+            key="login"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            className="flex-1 flex items-center justify-center relative z-10"
+          >
+            <div className="w-full max-w-md bg-slate-900/60 backdrop-blur-3xl p-8 rounded-[2.5rem] border border-white/10 shadow-2xl text-center">
+              <NinjacartLogo className="h-12 mx-auto mb-8 justify-center" />
+              <h2 className="text-xl font-black tracking-widest uppercase italic text-emerald-400 mb-2">Secure Access</h2>
+              <p className="text-slate-500 text-[10px] uppercase tracking-[0.3em] mb-8">Ninjacart Financial Terminal</p>
+              
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="relative group">
+                  <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${loginError ? 'text-rose-500' : 'text-slate-600 group-focus-within:text-emerald-400'}`} size={18} />
+                  <input 
+                    type="password"
+                    placeholder="ENTER ACCESS KEY"
+                    className={`w-full pl-12 pr-4 py-4 bg-slate-950/50 border rounded-2xl focus:outline-none transition-all font-black tracking-[0.2em] text-center text-sm ${loginError ? 'border-rose-500 text-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 'border-slate-800 focus:border-emerald-500/50 text-white placeholder:text-slate-700'}`}
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                  />
+                </div>
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  className="w-full py-4 bg-emerald-500 text-[#020617] rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all"
+                >
+                  Authorize Entry <ArrowRight size={16} />
+                </motion.button>
+              </form>
+              
+              <p className="mt-8 text-[9px] font-bold text-slate-700 uppercase tracking-widest">
+                Protected by military-grade encryption
+              </p>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div 
+            key="dashboard"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex-1 relative z-10"
+          >
+            {/* Header */}
+            <header className="flex items-center justify-between mb-8 max-w-4xl mx-auto">
+              <div className="flex items-center gap-4">
+                <NinjacartLogo className="h-8 md:h-10" />
+                <div className="h-6 w-[1px] bg-slate-800 hidden sm:block" />
+                <h1 className="text-sm font-black tracking-widest uppercase italic text-emerald-400 hidden sm:block">Live_Limit</h1>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => fetchData()}
+                  className="p-2 bg-slate-900/60 backdrop-blur-xl text-emerald-400 rounded-lg border border-slate-700/50 flex items-center gap-2 font-bold text-[10px]"
+                  disabled={loading}
+                >
+                  <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+                  {loading ? "SYNCING..." : "REFRESH"}
+                </motion.button>
+                
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleLogout}
+                  className="p-2 bg-rose-500/10 backdrop-blur-xl text-rose-400 rounded-lg border border-rose-500/30 flex items-center gap-2 font-bold text-[10px]"
+                >
+                  <LogOut size={14} />
+                  EXIT
+                </motion.button>
+              </div>
+            </header>
+
+            <main className="max-w-4xl mx-auto space-y-4">
+              {error && (
+                <div className="bg-rose-950/60 backdrop-blur-xl border border-rose-500/30 p-3 rounded-xl flex items-center gap-3 text-rose-300 text-xs font-bold">
+                  <WifiOff size={16} />
+                  {error}
+                </div>
+              )}
+
+              {/* Search Bar */}
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-900/60 backdrop-blur-2xl p-4 rounded-2xl shadow-2xl border border-white/5"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="relative group">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-emerald-400" size={16} />
+                    <input 
+                      type="text" 
+                      placeholder="Mobile..." 
+                      className="w-full pl-10 pr-4 py-2 bg-slate-950/40 border border-slate-800 rounded-xl focus:outline-none focus:border-emerald-500/50 text-sm font-semibold text-white placeholder:text-slate-600"
+                      value={phoneSearch}
+                      onChange={(e) => setPhoneSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="relative group">
+                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-emerald-400" size={16} />
+                    <input 
+                      type="text" 
+                      placeholder="AU_ID..." 
+                      className="w-full pl-10 pr-4 py-2 bg-slate-950/40 border border-slate-800 rounded-xl focus:outline-none focus:border-emerald-500/50 text-sm font-semibold text-white placeholder:text-slate-600"
+                      value={idSearch}
+                      onChange={(e) => setIdSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Results */}
+              <div className="space-y-4">
+                <AnimatePresence mode="wait">
+                  {loading && data.length === 0 ? (
+                    <div className="py-20 text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent mx-auto mb-4"></div>
+                      <p className="text-emerald-400/70 font-black uppercase tracking-[0.2em] text-[9px]">Syncing Sector Data</p>
+                    </div>
+                  ) : !isSearching ? (
+                    <motion.div 
+                      key="empty"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="bg-slate-900/30 backdrop-blur-md rounded-3xl border border-dashed border-white/5 py-16 flex flex-col items-center justify-center text-center px-10 shadow-2xl"
+                    >
+                      <Search size={32} className="text-slate-700 mb-4" />
+                      <h3 className="text-slate-500 font-black uppercase tracking-widest text-[10px]">Initialize Query</h3>
+                      <p className="text-slate-600 text-[10px] mt-1 italic">Waiting for search input...</p>
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="results"
+                      initial="hidden"
+                      animate="show"
+                      className="space-y-4"
+                    >
+                      {filteredData.length > 0 ? (
+                        filteredData.map((row, idx) => {
+                          const hasActiveDPD = row.dpd > 0 || row.activeDpdLoans > 0;
+                          
+                          return (
+                            <motion.div 
+                              key={`${row.auId}-${idx}`} 
+                              className="bg-slate-900/70 backdrop-blur-2xl rounded-2xl shadow-xl border border-white/10 overflow-hidden relative group"
+                            >
+                              {/* Compact Header Strip */}
+                              <div className="bg-slate-950/90 px-6 py-2 flex justify-between items-center border-b border-white/5 relative z-10">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Record_{idx + 1}</span>
+                                <div className={`flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${hasActiveDPD ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                                  {hasActiveDPD ? <AlertCircle size={10}/> : <CheckCircle2 size={10}/>}
+                                  {hasActiveDPD ? 'Clear the DPD' : 'ACTIVE'}
+                                </div>
+                              </div>
+
+                              {/* List View - Side by Side */}
+                              <div className="divide-y divide-white/5 relative z-10">
+                                <SideCell label="AU_ID" value={row.auId} icon={<Hash size={12}/>} />
+                                <SideCell label="Full Name" value={row.name} icon={<User size={12}/>} />
+                                <SideCell label="Contact No" value={row.phone} icon={<Phone size={12}/>} />
+                                <SideCell label="BNPL Limit" value={`₹${row.bnplLimit.toLocaleString('en-IN')}`} icon={<CreditCard size={12}/>} isLimit />
+                                <SideCell label="Fungible Limit" value={`₹${row.fungibleLimit.toLocaleString('en-IN')}`} icon={<Activity size={12}/>} />
+                                <SideCell label="DPD Count" value={row.dpd > 0 ? `${row.dpd} Days` : "0"} icon={<AlertCircle size={12}/>} isDanger={row.dpd > 0} />
+                                <SideCell 
+                                    label="Active DPD Loans" 
+                                    value={hasActiveDPD ? "YES" : "NO"} 
+                                    icon={<ShieldAlert size={12}/>} 
+                                    isDanger={hasActiveDPD}
+                                    isSuccess={!hasActiveDPD}
+                                />
+                              </div>
+                            </motion.div>
+                          );
+                        })
+                      ) : (
+                        <div className="bg-slate-900/60 backdrop-blur-xl p-10 rounded-2xl text-center border border-white/5">
+                          <p className="text-slate-600 font-bold uppercase tracking-widest text-[9px]">Zero records found</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </main>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <footer className="relative z-10 max-w-4xl mx-auto mt-auto py-6 text-center opacity-40">
+         <div className="h-6 flex justify-center gap-3 items-center">
+            <img src="image_7fa731.png" className="h-full w-auto" alt="" />
+            <div className="w-[1px] h-4 bg-slate-800 mx-1"></div>
+            <img src="ninjacart.png" className="h-3/4 w-auto invert" alt="" />
+         </div>
+      </footer>
+    </div>
+  );
+};
+
+const SideCell = ({ label, value, icon, isLimit, isDanger, isSuccess }) => (
+  <div className="flex items-center px-6 py-3 hover:bg-white/5 transition-colors group">
+    <div className="w-1/3 md:w-1/4 flex items-center gap-3">
+      <span className="text-slate-600 group-hover:text-emerald-400 transition-colors">{icon}</span>
+      <span className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">{label}</span>
+    </div>
+    <div className="flex-1">
+      <div className={`text-xs md:text-sm font-bold tracking-tight ${
+          isLimit ? 'text-emerald-400 font-black' : 
+          isDanger ? 'text-rose-400 uppercase drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]' : 
+          isSuccess ? 'text-emerald-400 uppercase' :
+          'text-slate-100'
+      }`}>
+        {value}
+      </div>
+    </div>
+  </div>
+);
+
+export default App;
